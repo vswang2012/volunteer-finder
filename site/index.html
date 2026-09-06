@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fremont volunteer board</title>
+<script>
+if (window.location.pathname.endsWith('/site/') || window.location.pathname.endsWith('/site')) {
+  window.location.replace(`${window.location.origin}/site/index.html${window.location.search}${window.location.hash}`);
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<style>
+  :root{
+    --mist:#edf1ee; --paper:#fff; --ink:#17251f; --muted:#5e6f66;
+    --moss:#256b4f; --signal:#1b4fd8; --rule:#d3dcd6;
+    --pad:1.15rem;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--mist); color:var(--ink);
+    font:400 16px/1.55 "IBM Plex Sans",system-ui,sans-serif;
+  }
+  .wrap{max-width:44rem; margin:0 auto; padding:0 var(--pad) 5rem}
+  a{color:inherit}
+
+  /* ---- masthead ---- */
+  header{padding:2.4rem 0 1.6rem}
+  .kicker{font-size:.85rem; color:var(--muted); margin:0 0 .5rem}
+  h1{
+    font-family:"Bricolage Grotesque",sans-serif; font-weight:700;
+    font-size:clamp(2rem,7vw,2.9rem); line-height:1.05;
+    letter-spacing:-.02em; margin:0 0 .9rem;
+  }
+  .count{
+    font-family:"Bricolage Grotesque",sans-serif; font-weight:500;
+    font-size:1.05rem; color:var(--moss);
+  }
+  .count b{font-weight:700}
+
+  /* ---- filters ---- */
+  .filters{
+    position:sticky; top:0; z-index:5; background:var(--mist);
+    padding:.85rem 0; border-block:1px solid var(--rule); margin-bottom:.25rem;
+  }
+  .topbar{display:flex; flex-wrap:wrap; align-items:center; gap:.8rem 1rem; margin-bottom:.75rem}
+  .citybar{display:flex; align-items:center; gap:.6rem}
+  .citybar label{font-weight:500}
+  .city-select{
+    min-width:10rem; border:1px solid var(--rule); border-radius:999px; background:var(--paper);
+    color:var(--ink); padding:.6rem .95rem; font:500 .92rem/1 "IBM Plex Sans",sans-serif;
+  }
+  .agebar{display:flex; align-items:center; gap:.6rem; margin-bottom:.75rem}
+  .agebar label{font-weight:500}
+  .stepper{display:flex; align-items:center; background:var(--paper); border:1px solid var(--rule); border-radius:999px}
+  .stepper button{
+    width:2.2rem; height:2.2rem; border:0; background:none; cursor:pointer;
+    font-size:1.15rem; color:var(--moss); border-radius:999px;
+  }
+  .stepper button:hover{background:var(--mist)}
+  .stepper output{
+    font-family:"Bricolage Grotesque",sans-serif; font-weight:700;
+    font-size:1.05rem; min-width:2ch; text-align:center;
+  }
+  .chips{display:flex; flex-wrap:wrap; gap:.4rem}
+  .chip{
+    font:500 .85rem/1 "IBM Plex Sans",sans-serif; padding:.5rem .8rem;
+    border:1px solid var(--rule); border-radius:999px; background:var(--paper);
+    color:var(--muted); cursor:pointer;
+  }
+  .chip:hover{border-color:var(--moss); color:var(--ink)}
+  .chip[aria-pressed="true"]{background:var(--moss); border-color:var(--moss); color:#fff}
+  :focus-visible{outline:2px solid var(--signal); outline-offset:2px}
+
+  .map-panel{
+    margin-top:1.25rem; background:var(--paper); border:1px solid var(--rule);
+    border-radius:1rem; overflow:hidden; box-shadow:0 12px 40px rgba(23,37,31,.06);
+  }
+  .map-copy{padding:1rem var(--pad) .75rem}
+  .map-copy h2{
+    margin:0 0 .2rem; font-family:"Bricolage Grotesque",sans-serif;
+    font-size:1.05rem; line-height:1.15;
+  }
+  .map-copy p{margin:0; color:var(--muted); font-size:.92rem}
+  .map-shell{display:grid; gap:0; border-top:1px solid var(--rule)}
+  .map-tools{
+    display:flex; flex-direction:column; align-items:stretch; gap:.9rem;
+    padding:1rem var(--pad); background:linear-gradient(180deg, rgba(237,241,238,.7), rgba(255,255,255,.95));
+  }
+  .map-tools h3{
+    margin:0; font-family:"Bricolage Grotesque",sans-serif; font-size:1rem; line-height:1.1;
+  }
+  .map-tools p{
+    margin:0; color:var(--muted); font-size:.9rem;
+  }
+  .map-sidebar-card{
+    display:flex; flex-direction:column; gap:.65rem; padding:1rem;
+    border:1px solid var(--rule); border-radius:1rem; background:var(--paper);
+    box-shadow:0 10px 28px rgba(23,37,31,.05);
+  }
+  .map-sidebar-card strong{
+    font-family:"Bricolage Grotesque",sans-serif; font-size:1.45rem; line-height:1; color:var(--moss);
+  }
+  .map-sidebar-card small{color:var(--muted); font-size:.82rem}
+  .map-summary{
+    padding:.8rem .9rem; border-radius:.85rem; background:rgba(200,58,47,.08);
+    color:#7f2a22; font-size:.88rem;
+  }
+  .map-actions{display:flex; flex-direction:column; gap:.65rem}
+  .map-tools label{font-size:.92rem; color:var(--muted)}
+  .map-tools output{
+    display:inline-block; min-width:3.5ch; font-family:"Bricolage Grotesque",sans-serif;
+    font-weight:700; color:var(--moss);
+  }
+  .radius{
+    display:flex; flex-direction:column; align-items:flex-start; gap:.55rem; padding:.8rem .9rem;
+    background:var(--paper); border:1px solid var(--rule); border-radius:1rem;
+  }
+  .radius-copy{display:flex; align-items:baseline; gap:.35rem; flex-wrap:wrap}
+  .radius input{width:100%; accent-color:var(--moss)}
+  .radius-scale{display:flex; justify-content:space-between; width:100%; color:var(--muted); font-size:.78rem}
+  .map-button{
+    width:100%; border:1px solid var(--rule); border-radius:999px; background:var(--paper);
+    color:var(--ink); padding:.7rem .95rem; font:500 .9rem/1 "IBM Plex Sans",sans-serif;
+    cursor:pointer; text-align:center;
+  }
+  .map-button:hover{border-color:var(--moss); color:var(--moss)}
+  .map-hint{font-size:.84rem; color:var(--muted)}
+  .map-canvas{min-width:0}
+  #map{height:min(27rem,62vh)}
+  @media (min-width: 760px){
+    .map-shell{grid-template-columns:minmax(14rem, 17rem) minmax(0, 1fr)}
+    .map-tools{border-right:1px solid var(--rule)}
+    #map{height:min(31rem,68vh)}
+  }
+  @media (max-width: 759px){
+    .map-tools{border-bottom:1px solid var(--rule)}
+  }
+  .leaflet-popup-content{font:400 .92rem/1.45 "IBM Plex Sans",sans-serif}
+  .leaflet-popup-content strong{
+    display:block; margin-bottom:.2rem; font-family:"Bricolage Grotesque",sans-serif;
+    font-size:1rem; line-height:1.15;
+  }
+  .leaflet-popup-content a{color:var(--signal)}
+  .leaflet-popup-content p{margin:.2rem 0 0; color:var(--muted)}
+
+  /* ---- list ---- */
+  .group{margin-top:2rem}
+  .group > h2{
+    font-family:"Bricolage Grotesque",sans-serif; font-weight:500;
+    font-size:.95rem; color:var(--muted); margin:0 0 .3rem; font-style:normal;
+  }
+  ol{list-style:none; margin:0; padding:0}
+  li.row{
+    display:grid; grid-template-columns:3.4rem 1fr; gap:.9rem;
+    padding:1.1rem 0 1.1rem .9rem; border-top:1px solid var(--rule);
+    border-left:3px solid transparent;
+  }
+  li.row.is-new{border-left-color:var(--signal)}
+  .age{
+    font-family:"Bricolage Grotesque",sans-serif; font-weight:700;
+    font-size:1.5rem; line-height:1.1; color:var(--moss);
+  }
+  .age.unstated{font-size:.8rem; font-weight:500; color:var(--muted); line-height:1.25}
+  .title{font-weight:600; font-size:1.05rem; margin:0 0 .15rem}
+  .title a{text-decoration:none}
+  .title a:hover{text-decoration:underline; text-decoration-color:var(--moss)}
+  .org{color:var(--muted); margin:0 0 .45rem; font-size:.92rem}
+  .desc{margin:0 0 .55rem; font-size:.94rem; color:#33443c}
+  .meta{display:flex; flex-wrap:wrap; gap:.35rem}
+  .tag{font-size:.78rem; padding:.22rem .55rem; border:1px solid var(--rule); border-radius:.3rem; color:var(--muted); background:var(--paper)}
+  .tag.new{border-color:var(--signal); color:var(--signal); font-weight:600}
+  .tag.hours{border-color:var(--moss); color:var(--moss)}
+
+  .empty{padding:2.5rem 0; color:var(--muted)}
+  .empty h2{font-family:"Bricolage Grotesque",sans-serif; color:var(--ink); margin:0 0 .4rem}
+  code{background:var(--paper); padding:.15rem .35rem; border-radius:.25rem; font-size:.88em}
+  footer{margin-top:3rem; padding-top:1.2rem; border-top:1px solid var(--rule); color:var(--muted); font-size:.85rem}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="kicker" id="refreshed">Loading…</p>
+  <h1>Volunteer openings around Fremont</h1>
+  <p class="count" id="count"></p>
+</header>
+
+<div class="filters">
+  <div class="topbar">
+    <div class="citybar">
+      <label for="city">City</label>
+      <select id="city" class="city-select">
+        <option value="all">All cities</option>
+      </select>
+    </div>
+    <div class="agebar">
+      <label for="age">I'm</label>
+      <div class="stepper">
+        <button type="button" id="minus" aria-label="Lower age">−</button>
+        <output id="age" for="minus plus">15</output>
+        <button type="button" id="plus" aria-label="Raise age">+</button>
+      </div>
+      <span style="color:var(--muted)">years old</span>
+    </div>
+  </div>
+  <div class="chips" id="chips">
+    <button class="chip" data-f="new" aria-pressed="false">New this week</button>
+    <button class="chip" data-f="weekend" aria-pressed="false">Weekends</button>
+    <button class="chip" data-f="hours" aria-pressed="false">Signs off hours</button>
+    <button class="chip" data-f="one_time" aria-pressed="false">One-time</button>
+  </div>
+</div>
+
+<section class="map-panel" aria-labelledby="map-heading">
+  <div class="map-copy">
+    <h2 id="map-heading">Map of current openings</h2>
+    <p id="map-status">Loading map…</p>
+  </div>
+  <div class="map-shell">
+    <aside class="map-tools" aria-label="Opportunity finder controls">
+      <div>
+        <h3>Opportunity finder</h3>
+        <p>Choose how far to search from your dropped pin.</p>
+      </div>
+      <div class="map-sidebar-card">
+        <small>Current radius</small>
+        <strong><output id="radius-value" for="radius">10</output> miles</strong>
+        <div class="map-summary">Drop a pin on the map to show opportunities inside this distance.</div>
+      </div>
+      <label class="radius" for="radius">
+        <div class="radius-copy">
+          <span>Search within</span>
+        </div>
+        <input type="range" id="radius" min="5" max="100" step="5" value="10">
+        <div class="radius-scale"><span>5 mi</span><span>100 mi</span></div>
+      </label>
+      <div class="map-actions">
+        <button type="button" class="map-button" id="clear-pin">Clear dropped pin</button>
+        <span class="map-hint" id="map-hint">Click the map to drop a pin, then drag the pin or move the map as needed.</span>
+      </div>
+    </aside>
+    <div class="map-canvas">
+      <div id="map" role="img" aria-label="Map of volunteer opportunities around Fremont"></div>
+    </div>
+  </div>
+</section>
+
+<main id="results"></main>
+
+<footer>
+  <p>Refreshed every Sunday from public listings. Always confirm details with
+  the organization before you show up.</p>
+</footer>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+const MAP_DEFAULT_CENTER = [37.5483, -121.9886];
+const MAP_DEFAULT_ZOOM = 11;
+const PIN_COLOR = '#c83a2f';
+const pinIcon = L.icon({
+  iconUrl: `data:image/svg+xml;utf8,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41">
+      <path fill="${PIN_COLOR}" stroke="#8e2119" stroke-width="1.5" d="M12.5 1.5C6.7 1.5 2 6.2 2 12c0 8.7 10.5 27.5 10.5 27.5S23 20.7 23 12c0-5.8-4.7-10.5-10.5-10.5Z"/>
+      <circle cx="12.5" cy="12" r="4.6" fill="#fff"/>
+    </svg>
+  `)}`,
+  iconRetinaUrl: `data:image/svg+xml;utf8,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41">
+      <path fill="${PIN_COLOR}" stroke="#8e2119" stroke-width="1.5" d="M12.5 1.5C6.7 1.5 2 6.2 2 12c0 8.7 10.5 27.5 10.5 27.5S23 20.7 23 12c0-5.8-4.7-10.5-10.5-10.5Z"/>
+      <circle cx="12.5" cy="12" r="4.6" fill="#fff"/>
+    </svg>
+  `)}`,
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+const state = {
+  age: 15,
+  city: 'all',
+  filters: new Set(),
+  data: null,
+  map: null,
+  markers: null,
+  pinMarker: null,
+  radiusCircle: null,
+  radiusMiles: 10,
+  pin: null,
+  userNavigatedMap: false,
+  mapRenderToken: 0,
+  renderToken: 0,
+};
+const $ = s => document.querySelector(s);
+
+async function boot(){
+  try {
+    const res = await fetch('../data/opportunities.json', {cache:'no-store'});
+    if(!res.ok) throw new Error(res.status);
+    state.data = await res.json();
+  } catch (e) {
+    $('#results').innerHTML = `<div class="empty">
+      <h2>No listing file found</h2>
+      <p>The site reads <code>data/opportunities.json</code>. Generate it with
+      <code>python seed.py</code>, then serve the repo root with
+      <code>python -m http.server</code> and open
+      <code>localhost:8000/site/</code>. Opening this file directly from disk
+      won't work — the browser blocks the fetch.</p></div>`;
+    $('#refreshed').textContent = 'Not connected to data';
+    return;
+  }
+  $('#refreshed').textContent = 'Last refreshed ' + fmt(state.data.generated_at);
+  populateCityFilter();
+  initMap();
+  render();
+}
+
+const fmt = d => d ? new Date(d+'T12:00:00').toLocaleDateString('en-US',
+  {month:'long', day:'numeric'}) : 'never';
+
+function eligible(o){
+  if (o.status !== 'open') return false;
+  if (state.city !== 'all' && normalizeCity(o.city) !== state.city) return false;
+  if (o.min_age !== null && o.min_age > state.age) return false;
+  // Programs that cap age (teen-only cohorts) drop off once you age out.
+  if (o.max_age !== null && o.max_age < state.age) return false;
+  const f = state.filters;
+  if (f.has('new') && o.first_seen !== state.data.generated_at) return false;
+  if (f.has('weekend') && !o.weekend) return false;
+  if (f.has('hours') && !o.signs_hours) return false;
+  if (f.has('one_time') && o.commitment !== 'one_time') return false;
+  return true;
+}
+
+function populateCityFilter(){
+  const select = $('#city');
+  const cities = [...new Set((state.data.opportunities || [])
+    .map(o => o.city)
+    .filter(Boolean)
+    .map(city => city.trim()))]
+    .sort((left, right) => left.localeCompare(right));
+
+  select.innerHTML = ['<option value="all">All cities</option>']
+    .concat(cities.map(city => `<option value="${escAttr(normalizeCity(city))}">${esc(city)}</option>`))
+    .join('');
+  select.value = state.city;
+}
+
+async function render(){
+  const token = ++state.renderToken;
+  const base = (state.data.opportunities || []).filter(eligible);
+  const visible = await filterByPin(base, token);
+  if (token !== state.renderToken) return;
+
+  const stated   = visible.filter(o => o.min_age !== null);
+  const unstated = visible.filter(o => o.min_age === null);
+  const fresh = visible.filter(o => o.first_seen === state.data.generated_at).length;
+
+  $('#count').innerHTML = fresh
+    ? `<b>${fresh}</b> new this week, ${visible.length} open in total`
+    : `<b>${visible.length}</b> open right now`;
+
+  const out = [];
+  if (!visible.length){
+    out.push(`<div class="empty"><h2>Nothing matches yet</h2>
+      <p>Try turning off a filter, or check back Sunday when the board
+      refreshes.</p></div>`);
+  }
+  if (stated.length) out.push(group('Open to you at ' + state.age, stated));
+  if (unstated.length) out.push(group(
+    "Age isn't posted — worth asking", unstated));
+  $('#results').innerHTML = out.join('');
+  renderMap(base, visible, token);
+}
+
+async function filterByPin(items, token){
+  if (!state.pin) return items;
+
+  const located = (await Promise.all(items.map(async opportunity => {
+    const point = await resolveLocation(opportunity);
+    if (!point || token !== state.renderToken) return null;
+    const distanceMiles = distanceBetweenMiles(state.pin, point);
+    if (distanceMiles > state.radiusMiles) return null;
+    return { opportunity, distanceMiles };
+  }))).filter(Boolean);
+
+  located.sort((left, right) => left.distanceMiles - right.distanceMiles);
+  return located.map(({ opportunity, distanceMiles }) => ({
+    ...opportunity,
+    distance_miles: distanceMiles,
+  }));
+}
+
+function initMap(){
+  if (state.map || !window.L) {
+    if (!window.L) $('#map-status').textContent = 'Map failed to load.';
+    return;
+  }
+  state.map = L.map('map', {
+    scrollWheelZoom: true,
+    zoomControl: true,
+  }).setView(MAP_DEFAULT_CENTER, MAP_DEFAULT_ZOOM);
+  state.markers = L.layerGroup().addTo(state.map);
+  // OpenStreetMap's standard tiles need no API key.
+  //
+  // Do NOT go back to basemaps.cartocdn.com: CARTO requires a key now, and
+  // without one it still answers HTTP 200 with a valid PNG -- but every tile
+  // has "API KEY REQUIRED" watermarked across it. A curl check of the status
+  // code passes while the map is visibly broken, so verify tiles by looking
+  // at them, not by fetching them.
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    // OSM publishes no @2x tiles, and Leaflet's retina mode would quadruple
+    // our requests against a donated service. Their tile usage policy asks
+    // for restraint from exactly this kind of small static site.
+    detectRetina: false,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  }).addTo(state.map);
+  state.map.on('click', event => setPin(event.latlng));
+  state.map.on('dragstart', () => {
+    state.userNavigatedMap = true;
+  });
+  state.map.on('zoomstart', () => {
+    state.userNavigatedMap = true;
+  });
+}
+
+async function renderMap(allItems, visibleItems, token){
+  initMap();
+  if (!state.map || !state.markers) return;
+
+  state.mapRenderToken = token;
+  state.markers.clearLayers();
+  syncRadiusOverlay();
+
+  if (!allItems.length) {
+    $('#map-status').textContent = 'No listings match the current filters.';
+    if (!state.userNavigatedMap && !state.pin) state.map.setView(MAP_DEFAULT_CENTER, MAP_DEFAULT_ZOOM);
+    return;
+  }
+
+  $('#map-status').textContent = state.pin
+    ? `Finding listings within ${state.radiusMiles} miles of your pin…`
+    : 'Finding each opportunity on the map…';
+  const located = (await Promise.all(visibleItems.map(resolveLocation)))
+    .filter(Boolean);
+
+  if (token !== state.mapRenderToken) return;
+
+  if (!located.length) {
+    $('#map-status').textContent = state.pin
+      ? `No opportunities with location info were found within ${state.radiusMiles} miles of your pin.`
+      : 'No mappable locations are posted for these listings yet.';
+    if (!state.userNavigatedMap && !state.pin) state.map.setView(MAP_DEFAULT_CENTER, MAP_DEFAULT_ZOOM);
+    return;
+  }
+
+  const bounds = [];
+  located.forEach(({ opportunity, lat, lon, precision }) => {
+    bounds.push([lat, lon]);
+    L.marker([lat, lon])
+      .bindPopup(mapPopup(opportunity, precision))
+      .addTo(state.markers);
+  });
+
+  if (state.pin) {
+    $('#map-status').textContent = `Showing ${located.length} opportunities within ${state.radiusMiles} miles of your pin.`;
+    if (!state.userNavigatedMap) {
+      const pinBounds = L.latLngBounds(bounds.concat([[state.pin.lat, state.pin.lon]]));
+      state.map.fitBounds(pinBounds, { padding: [28, 28] });
+    }
+    return;
+  }
+
+  $('#map-status').textContent = located.length === visibleItems.length
+    ? `Showing ${located.length} opportunities on the map.`
+    : `Showing ${located.length} of ${visibleItems.length} opportunities with location info.`;
+
+  if (state.userNavigatedMap) return;
+
+  if (bounds.length === 1) {
+    state.map.setView(bounds[0], 13);
+    return;
+  }
+  state.map.fitBounds(bounds, { padding: [28, 28] });
+}
+
+function setPin(latlng){
+  state.pin = { lat: latlng.lat, lon: latlng.lng };
+  state.userNavigatedMap = false;
+  if (!state.pinMarker) {
+    state.pinMarker = L.marker([latlng.lat, latlng.lng], {
+      draggable: true,
+      icon: pinIcon,
+    }).addTo(state.map);
+    state.pinMarker.on('dragstart', () => {
+      state.userNavigatedMap = true;
+    });
+    state.pinMarker.on('dragend', () => {
+      const point = state.pinMarker.getLatLng();
+      state.pin = { lat: point.lat, lon: point.lng };
+      state.userNavigatedMap = false;
+      syncRadiusOverlay();
+      render();
+    });
+  } else {
+    state.pinMarker.setLatLng([latlng.lat, latlng.lng]);
+  }
+  syncRadiusOverlay();
+  render();
+}
+
+function clearPin(){
+  state.pin = null;
+  if (state.pinMarker) {
+    state.pinMarker.remove();
+    state.pinMarker = null;
+  }
+  if (state.radiusCircle) {
+    state.radiusCircle.remove();
+    state.radiusCircle = null;
+  }
+  state.userNavigatedMap = false;
+  render();
+}
+
+function syncRadiusOverlay(){
+  if (!state.map) return;
+  if (!state.pin) {
+    if (state.radiusCircle) {
+      state.radiusCircle.remove();
+      state.radiusCircle = null;
+    }
+    return;
+  }
+
+  if (!state.radiusCircle) {
+    state.radiusCircle = L.circle([state.pin.lat, state.pin.lon], {
+      radius: milesToMeters(state.radiusMiles),
+      color: PIN_COLOR,
+      weight: 2,
+      opacity: 0.65,
+      fillColor: PIN_COLOR,
+      fillOpacity: 0.12,
+      dashArray: '6 6',
+    }).addTo(state.map);
+  } else {
+    state.radiusCircle.setLatLng([state.pin.lat, state.pin.lon]);
+    state.radiusCircle.setRadius(milesToMeters(state.radiusMiles));
+  }
+}
+
+async function resolveLocation(opportunity){
+  if (typeof opportunity.lat === 'number' && typeof opportunity.lon === 'number') {
+    return { opportunity, lat: opportunity.lat, lon: opportunity.lon, precision: 'exact' };
+  }
+  return null;
+}
+
+function mapPopup(opportunity, precision){
+  const location = opportunity.address || opportunity.city || 'Location not posted';
+  const prefix = precision === 'city' ? 'Approximate area' : precision === 'approximate' ? 'Approximate address' : 'Location';
+  return `<strong>${esc(opportunity.title)}</strong>
+    <a href="${opportunity.url}" target="_blank" rel="noopener">Open listing</a>
+    <p>${esc(opportunity.org)}</p>
+    <p>${prefix}: ${esc(location)}</p>
+    ${typeof opportunity.distance_miles === 'number' ? `<p>${opportunity.distance_miles.toFixed(1)} miles from your pin</p>` : ''}`;
+}
+
+function group(heading, items){
+  return `<section class="group"><h2>${heading}</h2><ol>${
+    items.map(row).join('')}</ol></section>`;
+}
+
+function row(o){
+  const isNew = o.first_seen === state.data.generated_at;
+  const age = o.min_age !== null
+    ? `<div class="age">${o.min_age}+</div>`
+    : `<div class="age unstated">not<br>stated</div>`;
+
+  const tags = [];
+  if (isNew) tags.push('<span class="tag new">New</span>');
+  if (o.signs_hours) tags.push('<span class="tag hours">Signs off hours</span>');
+  if (o.weekend) tags.push('<span class="tag">Weekends</span>');
+  if (o.commitment === 'one_time') tags.push('<span class="tag">One-time</span>');
+  if (o.commitment === 'recurring') tags.push('<span class="tag">Ongoing</span>');
+  if (typeof o.distance_miles === 'number') tags.push(`<span class="tag">${o.distance_miles.toFixed(1)} mi away</span>`);
+  (o.causes||[]).slice(0,2).forEach(c =>
+    tags.push(`<span class="tag">${c}</span>`));
+
+  return `<li class="row${isNew ? ' is-new' : ''}">
+    ${age}
+    <div>
+      <p class="title"><a href="${o.url}" target="_blank" rel="noopener">${esc(o.title)}</a></p>
+      <p class="org">${esc(o.org)}${o.city ? ', ' + esc(o.city) : ''}</p>
+      ${o.description ? `<p class="desc">${esc(o.description)}</p>` : ''}
+      <div class="meta">${tags.join('')}</div>
+    </div></li>`;
+}
+
+const esc = s => String(s??'').replace(/[&<>"]/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function setAge(v){
+  state.age = Math.min(19, Math.max(12, v));
+  $('#age').textContent = state.age;
+  render();
+}
+$('#minus').onclick = () => setAge(state.age - 1);
+$('#plus').onclick  = () => setAge(state.age + 1);
+$('#city').onchange = e => {
+  state.city = e.target.value;
+  render();
+};
+$('#radius').oninput = e => {
+  state.radiusMiles = Number(e.target.value);
+  $('#radius-value').textContent = state.radiusMiles;
+  syncRadiusOverlay();
+  if (state.pin) render();
+};
+$('#clear-pin').onclick = () => clearPin();
+$('#chips').onclick = e => {
+  const b = e.target.closest('.chip'); if(!b) return;
+  const on = b.getAttribute('aria-pressed') === 'true';
+  b.setAttribute('aria-pressed', String(!on));
+  on ? state.filters.delete(b.dataset.f) : state.filters.add(b.dataset.f);
+  render();
+};
+
+function milesToMeters(miles){
+  return miles * 1609.344;
+}
+
+function distanceBetweenMiles(origin, point){
+  const lat1 = toRadians(origin.lat);
+  const lat2 = toRadians(point.lat);
+  const dLat = lat2 - lat1;
+  const dLon = toRadians(point.lon - origin.lon);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return 3958.7613 * c;
+}
+
+function normalizeCity(city){
+  return String(city || '').trim().toLowerCase();
+}
+
+function escAttr(s){
+  return String(s ?? '').replace(/[&<>"]/g,
+    c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+function toRadians(value){
+  return value * Math.PI / 180;
+}
+
+boot();
+</script>
+</body>
+</html>
