@@ -3,3 +3,5 @@
 .pytest_cache/
 __pycache__/
 *.py[cod]
+# build artifact from scripts/vercel-build.sh
+public/

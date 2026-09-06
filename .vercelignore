@@ -1,0 +1,15 @@
+# The host builds nothing but a copy job, so don't ship the pipeline to it.
+# requirements.txt is kept out on purpose: its presence at the repo root is
+# what makes Vercel auto-detect a Python app and demand a WSGI entrypoint.
+requirements.txt
+pipeline/
+scrapers/
+tests/
+run.py
+seed.py
+.github/
+.venv/
+.pytest_cache/
+__pycache__/
+*.pyc
+*.md

@@ -250,6 +250,29 @@ exact address → org+city → city center. Nothing geocodes in the browser, so 
 key is needed there either. Adding a city means adding a `CITY_CENTERS` entry
 at minimum, or its listings get no coordinates and never plot.
 
+## Deployment (Vercel)
+
+The host serves two files. `scripts/vercel-build.sh` copies `site/index.html`
+to `public/index.html` and `data/opportunities.json` to
+`public/data/`; `vercel.json` points `outputDirectory` at `public`.
+
+**`vercel.json` is not optional.** Without it, Vercel sees `requirements.txt`
+at the repo root, auto-detects a Python app, and fails with *"No python
+entrypoint found"* — it looks for `app.py`/`wsgi.py`/`api/index.py` and there
+is none, because the Python here is CI tooling that never runs on the host.
+`framework: null` plus an explicit `buildCommand` and `outputDirectory` is what
+suppresses that detection.
+
+The deployed layout puts `index.html` at `/` while local dev serves it from
+`/site/`. The page's `fetch('../data/opportunities.json')` works in both:
+browsers clamp a leading `..` at the web root (RFC 3986 remove_dot_segments),
+so it resolves to `/data/opportunities.json` either way. Don't "fix" that path
+to `./data/` — it would break local dev.
+
+`public/` is gitignored. The weekly Action commits `data/opportunities.json`,
+which pushes to `main` and triggers a redeploy, so the board refreshes without
+anyone touching Vercel.
+
 ## Known rough edges
 
 - **Stacked markers.** 6 listings sit on 3 shared points, because orgs sharing
