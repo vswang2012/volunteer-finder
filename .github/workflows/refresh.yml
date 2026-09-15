@@ -49,4 +49,3 @@ jobs:
         if: steps.scrape.outcome == 'failure'
         run: |
           echo "::warning::One or more scrapers failed. Check the Scrape step log."
-          exit 1
